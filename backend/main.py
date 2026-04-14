@@ -17,19 +17,51 @@ app.add_middleware(
 )
 
 DOWNLOAD_DIR = "/tmp/downloads"
+COOKIES_FILE = "/tmp/yt_cookies.txt"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-# Almacena el progreso de cada descarga
+# Escribir cookies de YouTube al iniciar
+COOKIES_CONTENT = """# Netscape HTTP Cookie File
+# https://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file! Do not edit.
+
+.youtube.com	TRUE	/	TRUE	1803074247	LOGIN_INFO	AFmmF2swRgIhAKPj28pJ3Bj5B7MOOEhKRKOiUN0MUayCtUVkONTljEBlAiEAjFHPfevbcs8KYc57w6uiVwFuBqiWuIFHJzTogJVbu5w:QUQ3MjNmdzg1VG1Eam1nX1F3U3lGNHZ3ZF9mOGJ5ZHVOTlRFamJsNDg2SWJqcUkzdy1yeXhqZlh6Y0RWaWJDNC1NcW8za2FQbmYtLUxING1SZGlHVU9zaVNyUzREaTAzdFRtN0kxUjhEemxwdFk1dC1od24xVlhfY0xWN004OHM1bVdId25tVXZKM1UwbkRVS0FwbUJnQmc1Yi1mMVFaY2lR
+.youtube.com	TRUE	/	TRUE	1810694537	PREF	f6=40000000&f7=100&tz=America.Mexico_City&f5=30000
+.youtube.com	TRUE	/	TRUE	1791148588	__Secure-BUCKET	CNYD
+.youtube.com	TRUE	/	FALSE	1810477158	SID	g.a0008wjz5v6sAcSctPBwwBvX0b8Vba3vIUgV3h6nIPQSlbm4MwgOck5Pu7nIhNm_HsypJ0OHVgACgYKASYSARcSFQHGX2MiM7BTOIVuEBlGDqSHNufDvBoVAUF8yKoHtxa_-y_NwvbVBpzH4c_T0076
+.youtube.com	TRUE	/	TRUE	1810477158	__Secure-1PSID	g.a0008wjz5v6sAcSctPBwwBvX0b8Vba3vIUgV3h6nIPQSlbm4MwgOmWHSTtZ3ny3H20S-4ZFBXAACgYKAUYSARcSFQHGX2MilvP5Vl4Ipqwf615kvkOdahoVAUF8yKqnoiyfOk07Pig473e570KX0076
+.youtube.com	TRUE	/	TRUE	1810477158	__Secure-3PSID	g.a0008wjz5v6sAcSctPBwwBvX0b8Vba3vIUgV3h6nIPQSlbm4MwgORTVEZ8NTaSEMqF_Jwa64AQACgYKAccSARcSFQHGX2MiLiP5BxYajVFUHjAbO0zlaRoVAUF8yKpf_qMLNRWDTwHLgxY3X6at0076
+.youtube.com	TRUE	/	FALSE	1810477158	HSID	AGOIuZUgGwqQmR6Sm
+.youtube.com	TRUE	/	TRUE	1810477158	SSID	AL4zHw4qyDSEEBaYS
+.youtube.com	TRUE	/	FALSE	1810477158	APISID	io6g1InSUCQo43dI/A5cOrgCYzBFu3vHvE
+.youtube.com	TRUE	/	TRUE	1810477158	SAPISID	zEViDp5mfO7rCSrM/AdALkB62nnc5CFzLl
+.youtube.com	TRUE	/	TRUE	1810477158	__Secure-1PAPISID	zEViDp5mfO7rCSrM/AdALkB62nnc5CFzLl
+.youtube.com	TRUE	/	TRUE	1810477158	__Secure-3PAPISID	zEViDp5mfO7rCSrM/AdALkB62nnc5CFzLl
+.youtube.com	TRUE	/	TRUE	1807670540	__Secure-1PSIDTS	sidts-CjABWhotCer4ZmQ7AXjTzJA1DXXQUBFu1YqwAS7Tg1y2-Q0L5M31KfzFU_GPkzT4NFwQAA
+.youtube.com	TRUE	/	TRUE	1807670540	__Secure-3PSIDTS	sidts-CjABWhotCer4ZmQ7AXjTzJA1DXXQUBFu1YqwAS7Tg1y2-Q0L5M31KfzFU_GPkzT4NFwQAA
+.youtube.com	TRUE	/	FALSE	1807670540	SIDCC	AKEyXzVXAjhipRkPf2PVdjw5gzbpAgLNQio-1qiz_vQ1GKZ3MLWsamCTsaWCEQ7HuQkR2L3t2Q
+.youtube.com	TRUE	/	TRUE	1807670540	__Secure-1PSIDCC	AKEyXzX1g_lXF6B91--Ry4iF4pEpPu8DL_mcIWs2vOtOH2OBGONYcg_f2WD7nCRFC61xyuqSux4
+.youtube.com	TRUE	/	TRUE	1807670540	__Secure-3PSIDCC	AKEyXzW4V7n8-mDWqFY0otiYCBE0uu3gzV11vttQJiPR2mYryyBwtLt8z3qvKo3JI5M3AA1Gww
+.youtube.com	TRUE	/	TRUE	1791686536	VISITOR_INFO1_LIVE	ZHdzu7Y_sS0
+.youtube.com	TRUE	/	TRUE	1791686536	VISITOR_PRIVACY_METADATA	CgJNWBIEGgAgIA%3D%3D
+.youtube.com	TRUE	/	TRUE	1791686534	__Secure-YNID	17.YT=Hd1FqTBRylxoizdMunAgsFMiik4PDmX1_6r_HpGhn39igigq-8TU-kP99vc1YPF7AwUc8zCRVZaboQSE30P_RmSyxXu3b9Qc3brhA24lU3NoaOVzkBhaDYbdF6dxbaJ_w7lkWXJYJzAPRdycz1LHaEy9Q9RoyNa1NHuVMnY30lC26d1UWAWTcETMxYgsAggSabMokYo3wqeXcpZd2m5pPftn7S0VdmAcEOX1vaHXol5OU3zU2HgPG4i6GUcTfqdwQBg9LkGeboIALMJ8PIYAvwisfUYU25t9wyPtCfEESNmxjNVnkJfSHy0RqSIhyd5ImoRQdFO_zoypFkny7QExwg
+.youtube.com	TRUE	/	TRUE	0	YSC	XxoQt2PxAUo
+.youtube.com	TRUE	/	TRUE	1791686534	__Secure-ROLLOUT_TOKEN	CKuyuq7YxOj8dRCa2M7DwI6SAxi-tq3gqOyTAw%3D%3D
+"""
+
+with open(COOKIES_FILE, "w") as f:
+    f.write(COOKIES_CONTENT)
+
 progress_store = {}
 
 class DownloadRequest(BaseModel):
     url: str
-    mode: str = "video"          # video | audio | playlist | subs
-    quality: str = "1080"        # max | 2160 | 1440 | 1080 | 720 | 480 | 360
-    video_format: str = "mp4"    # mp4 | webm | mkv | mov | avi
-    audio_format: str = "mp3"    # mp3 | aac | flac | wav | ogg | opus | m4a
-    audio_bitrate: str = "192"   # 320 | 256 | 192 | 128 | 96 | 64
-    vcodec: str = "auto"         # auto | h264 | h265 | av1 | vp9
+    mode: str = "video"
+    quality: str = "1080"
+    video_format: str = "mp4"
+    audio_format: str = "mp3"
+    audio_bitrate: str = "192"
+    vcodec: str = "auto"
     audio_track: str = "original"
     include_subs: bool = False
     sub_lang: str = "es"
@@ -37,8 +69,8 @@ class DownloadRequest(BaseModel):
     hdr: bool = False
     fps60: bool = False
     metadata: bool = True
-    trim: str = ""               # "00:01:00-00:03:00"
-    playlist_range: str = ""     # "1-10"
+    trim: str = ""
+    playlist_range: str = ""
     filename_template: str = "%(title)s.%(ext)s"
 
 @app.get("/")
@@ -47,25 +79,20 @@ def root():
 
 @app.post("/info")
 def get_info(req: DownloadRequest):
-    """Obtiene información del video sin descargar"""
     ydl_opts = {
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
+        "cookiefile": COOKIES_FILE,
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(req.url, download=False)
             if "entries" in info:
-                # Es una playlist
                 return {
                     "type": "playlist",
                     "title": info.get("title"),
                     "count": len(info["entries"]),
-                    "entries": [
-                        {"title": e.get("title"), "duration": e.get("duration")}
-                        for e in info["entries"][:10]
-                    ]
                 }
             return {
                 "type": "video",
@@ -74,19 +101,12 @@ def get_info(req: DownloadRequest):
                 "thumbnail": info.get("thumbnail"),
                 "uploader": info.get("uploader"),
                 "view_count": info.get("view_count"),
-                "formats": [
-                    {"format_id": f.get("format_id"), "ext": f.get("ext"),
-                     "height": f.get("height"), "filesize": f.get("filesize")}
-                    for f in info.get("formats", [])
-                    if f.get("height")
-                ][-8:]
             }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/download")
 def download(req: DownloadRequest):
-    """Inicia descarga y devuelve un job_id para rastrear progreso"""
     job_id = str(uuid.uuid4())[:8]
     progress_store[job_id] = {"status": "starting", "percent": 0, "speed": "", "eta": "", "filename": ""}
 
@@ -96,24 +116,26 @@ def download(req: DownloadRequest):
 
         def progress_hook(d):
             if d["status"] == "downloading":
-                pct = d.get("_percent_str", "0%").strip().replace("%","")
-                progress_store[job_id].update({
-                    "status": "downloading",
-                    "percent": float(pct) if pct else 0,
-                    "speed": d.get("_speed_str", ""),
-                    "eta": d.get("_eta_str", ""),
-                    "filesize": d.get("_total_bytes_str", ""),
-                })
+                pct = d.get("_percent_str", "0%").strip().replace("%", "")
+                try:
+                    progress_store[job_id].update({
+                        "status": "downloading",
+                        "percent": float(pct),
+                        "speed": d.get("_speed_str", ""),
+                        "eta": d.get("_eta_str", ""),
+                        "filesize": d.get("_total_bytes_str", ""),
+                    })
+                except:
+                    pass
             elif d["status"] == "finished":
                 progress_store[job_id]["status"] = "processing"
-                progress_store[job_id]["filename"] = d.get("filename", "")
 
-        # Construir opciones según modo
         ydl_opts = {
             "outtmpl": os.path.join(out_path, req.filename_template),
             "progress_hooks": [progress_hook],
             "quiet": True,
             "no_warnings": True,
+            "cookiefile": COOKIES_FILE,
         }
 
         if req.mode == "audio":
@@ -125,8 +147,6 @@ def download(req: DownloadRequest):
             }]
             if req.metadata:
                 ydl_opts["postprocessors"].append({"key": "FFmpegMetadata"})
-                ydl_opts["postprocessors"].append({"key": "EmbedThumbnail"})
-                ydl_opts["writethumbnail"] = True
 
         elif req.mode == "subs":
             ydl_opts["skip_download"] = True
@@ -136,37 +156,24 @@ def download(req: DownloadRequest):
             ydl_opts["subtitlesformat"] = req.sub_format
 
         else:
-            # Video
             quality = req.quality
-            if quality == "max":
-                fmt = "bestvideo+bestaudio/best"
-            else:
-                fmt = f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]"
-            
-            if req.fps60:
-                fmt = fmt.replace("bestvideo", "bestvideo[fps>=50]")
-            if not req.hdr:
-                fmt = fmt.replace("bestvideo", "bestvideo[vcodec!*=av01]")
-
+            fmt = f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]" if quality != "max" else "bestvideo+bestaudio/best"
             ydl_opts["format"] = fmt
             ydl_opts["merge_output_format"] = req.video_format
-
-            if req.vcodec != "auto":
-                codec_map = {"h264": "avc1", "h265": "hev1", "av1": "av01", "vp9": "vp9"}
-                ydl_opts["format"] = fmt + f"[vcodec*={codec_map.get(req.vcodec, '')}]" if req.vcodec in codec_map else fmt
-
             if req.include_subs:
                 ydl_opts["writesubtitles"] = True
                 ydl_opts["subtitleslangs"] = [req.sub_lang]
-
             if req.metadata:
                 ydl_opts["postprocessors"] = [{"key": "FFmpegMetadata"}]
 
         if req.playlist_range:
             parts = req.playlist_range.split("-")
             if len(parts) == 2:
-                ydl_opts["playliststart"] = int(parts[0])
-                ydl_opts["playlistend"] = int(parts[1])
+                try:
+                    ydl_opts["playliststart"] = int(parts[0])
+                    ydl_opts["playlistend"] = int(parts[1])
+                except:
+                    pass
 
         if req.trim:
             parts = req.trim.replace(" ", "").split("-")
@@ -177,8 +184,7 @@ def download(req: DownloadRequest):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([req.url])
-            
-            # Buscar archivo descargado
+
             files = os.listdir(out_path)
             if files:
                 filename = files[0]
@@ -195,7 +201,6 @@ def download(req: DownloadRequest):
             progress_store[job_id]["status"] = "error"
             progress_store[job_id]["error"] = str(e)
 
-        # Limpiar archivos viejos (>1 hora)
         def cleanup():
             time.sleep(3600)
             import shutil
