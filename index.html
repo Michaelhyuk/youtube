@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Vault — Descargador</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#12121a; --surface2:#1c1c28;
+    --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.15);
+    --accent:#ff2d55; --accent2:#ff6b35; --gold:#ffd60a;
+    --text:#f0f0f5; --muted:#7a7a9a; --success:#30d158; --info:#0a84ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;top:-200px;left:-200px;width:700px;height:700px;background:radial-gradient(circle,rgba(255,45,85,0.12) 0%,transparent 70%);pointer-events:none;z-index:0;}
+  body::after{content:'';position:fixed;bottom:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(10,132,255,0.10) 0%,transparent 70%);pointer-events:none;z-index:0;}
+  .container{max-width:900px;margin:0 auto;padding:0 1.5rem;position:relative;z-index:1;}
+
+  header{padding:2.5rem 0 2rem;text-align:center;}
+  .logo-badge{display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:50px;padding:8px 18px 8px 12px;margin-bottom:1.5rem;}
+  .logo-icon{width:28px;height:28px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .logo-icon svg{width:16px;height:16px;fill:white;}
+  .logo-badge span{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;}
+  h1{font-family:'Syne',sans-serif;font-size:clamp(2.2rem,5vw,3.5rem);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:.75rem;}
+  h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);font-size:1.05rem;font-weight:300;}
+
+  /* API config banner */
+  .api-banner{background:rgba(10,132,255,0.08);border:1px solid rgba(10,132,255,0.25);border-radius:14px;padding:14px 18px;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px;}
+  .api-banner input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;}
+  .api-banner input:focus{border-color:var(--info);}
+  .api-banner label{font-size:0.82rem;color:rgba(10,132,255,0.9);white-space:nowrap;font-weight:500;}
+  .dot-status{width:8px;height:8px;border-radius:50%;background:#555;flex-shrink:0;}
+  .dot-status.ok{background:var(--success);}
+  .dot-status.err{background:var(--accent);}
+
+  .main-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:2rem;margin-bottom:1.5rem;}
+  .url-group{display:flex;gap:12px;margin-bottom:1.5rem;}
+  .url-input-wrap{flex:1;position:relative;}
+  .url-input-wrap svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:20px;height:20px;fill:var(--muted);}
+  #urlInput{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:15px 16px 15px 48px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.95rem;outline:none;transition:border-color .2s;}
+  #urlInput:focus{border-color:var(--accent);}
+  #urlInput::placeholder{color:var(--muted);}
+  .btn-paste{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:14px;padding:0 20px;font-family:'DM Sans',sans-serif;font-size:.9rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .btn-paste:hover{background:#22223a;}
+
+  /* Info preview */
+  .info-preview{display:none;background:var(--surface2);border-radius:12px;padding:12px 16px;margin-bottom:1.2rem;gap:12px;align-items:center;}
+  .info-preview.show{display:flex;}
+  .info-thumb{width:64px;height:48px;border-radius:6px;background:var(--surface);flex-shrink:0;object-fit:cover;}
+  .info-text h4{font-size:.9rem;font-weight:600;margin-bottom:3px;}
+  .info-text p{font-size:.78rem;color:var(--muted);}
+
+  .tabs{display:flex;gap:6px;background:var(--surface2);border-radius:12px;padding:5px;margin-bottom:1.5rem;}
+  .tab{flex:1;padding:9px;background:transparent;border:none;border-radius:9px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s;}
+  .tab.active{background:var(--surface);color:var(--text);border:1px solid var(--border2);}
+
+  .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;}
+  @media(max-width:600px){.options-grid{grid-template-columns:1fr;}}
+  .option-group label{display:block;font-size:.8rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
+  .option-group select,.option-group input[type=text]{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;cursor:pointer;}
+  .option-group select:focus,.option-group input[type=text]:focus{border-color:var(--accent);}
+  .option-group select option{background:#1c1c28;}
+
+  .toggles-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1.5rem;}
+  .toggle-chip{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:8px 14px;cursor:pointer;transition:all .2s;user-select:none;font-size:.88rem;}
+  .toggle-chip.active{background:rgba(255,45,85,0.12);border-color:rgba(255,45,85,0.4);color:#ff6b7a;}
+  .toggle-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .2s;}
+  .toggle-chip.active .dot{background:var(--accent);}
+
+  .advanced-toggle{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.9rem;cursor:pointer;margin-bottom:1rem;transition:color .2s;}
+  .advanced-toggle:hover{color:var(--text);}
+  .advanced-toggle .arrow{transition:transform .2s;font-size:12px;}
+  .advanced-toggle.open .arrow{transform:rotate(90deg);}
+  .advanced-panel{display:none;background:var(--surface2);border-radius:14px;padding:1.25rem;margin-bottom:1.5rem;border:1px solid var(--border);}
+  .advanced-panel.open{display:block;}
+  .adv-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+  @media(max-width:600px){.adv-grid{grid-template-columns:1fr;}}
+
+  .format-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .format-chip{padding:6px 12px;border-radius:50px;background:var(--surface2);border:1px solid var(--border);font-size:.82rem;cursor:pointer;transition:all .2s;color:var(--muted);}
+  .format-chip.sel{background:rgba(255,45,85,0.12);border-color:rgba(255,45,85,0.4);color:#ff6b7a;}
+
+  .btn-row{display:flex;gap:10px;}
+  .btn-info{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:14px;padding:16px 20px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .btn-info:hover{background:#22223a;}
+  .btn-download{flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:14px;padding:16px;color:white;font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.02em;cursor:pointer;transition:all .2s;}
+  .btn-download:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(255,45,85,.35);}
+  .btn-download:active{transform:translateY(0);}
+  .btn-download:disabled,.btn-info:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+  .status-bar{display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;}
+  .status-bar.show{display:block;}
+  .status-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .status-label{font-size:.88rem;font-weight:500;color:var(--muted);}
+  .status-pct{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;color:var(--accent);}
+  .progress-track{background:var(--surface2);border-radius:50px;height:6px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:50px;width:0%;transition:width .4s ease;}
+  .status-info{display:flex;gap:1.5rem;margin-top:10px;}
+  .status-info span{font-size:.82rem;color:var(--muted);}
+  .status-info strong{color:var(--text);}
+
+  .result-card{display:none;background:var(--surface);border:1px solid rgba(48,209,88,.25);border-radius:16px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;}
+  .result-card.show{display:flex;align-items:center;gap:1rem;}
+  .result-icon{width:42px;height:42px;background:rgba(48,209,88,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .result-icon svg{width:22px;height:22px;}
+  .result-text h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:3px;}
+  .result-text p{font-size:.85rem;color:var(--muted);}
+  .result-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .btn-sm{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block;}
+  .btn-sm:hover{background:#22223a;}
+  .btn-sm.primary{background:rgba(48,209,88,.15);border-color:rgba(48,209,88,.4);color:var(--success);}
+
+  .err-msg{display:none;background:rgba(255,45,85,.08);border:1px solid rgba(255,45,85,.25);border-radius:10px;padding:10px 14px;font-size:.88rem;color:#ff6b7a;margin-bottom:1rem;}
+  .err-msg.show{display:block;}
+
+  .notice{background:rgba(255,214,10,.07);border:1px solid rgba(255,214,10,.2);border-radius:12px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px;margin-bottom:1.5rem;font-size:.83rem;color:rgba(255,214,10,.8);line-height:1.5;}
+
+  .section-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem;}
+  .features-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:2.5rem;}
+  @media(max-width:600px){.features-row{grid-template-columns:1fr;}}
+  .feat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.1rem;text-align:center;}
+  .feat-icon{font-size:1.5rem;margin-bottom:8px;}
+  .feat-card h4{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:4px;}
+  .feat-card p{font-size:.8rem;color:var(--muted);line-height:1.4;}
+
+  footer{text-align:center;padding:1.5rem 0 2rem;color:var(--muted);font-size:.82rem;border-top:1px solid var(--border);}
+  footer a{color:var(--muted);text-decoration:none;}
+  footer a:hover{color:var(--text);}
+
+  .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  #audioOptions,#playlistOptions,#subsOptions{display:none;}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-badge">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.85a8.28 8.28 0 004.83 1.55V6.95a4.85 4.85 0 01-1.06-.26z"/></svg>
+      </div>
+      <span>YT Vault · Descargador</span>
+    </div>
+    <h1>Descarga <span>sin límites</span></h1>
+    <p class="subtitle">Tu propio servidor · Sin límites · 100% privado</p>
+  </header>
+
+  <!-- API config -->
+  <div class="api-banner">
+    <div class="dot-status" id="dotStatus"></div>
+    <label>URL de tu API:</label>
+    <input type="text" id="apiUrl" placeholder="https://yt-vault-api.onrender.com" />
+    <button class="btn-paste" onclick="testAPI()" style="padding:8px 14px;font-size:.85rem;">Probar</button>
+  </div>
+
+  <div class="notice">
+    <span>⚠</span>
+    <span>Descarga tu <strong>index.html</strong> y súbelo a GitHub Pages. El backend va en Render.com. Configura la URL de tu API arriba. Solo descarga contenido del que tengas derechos.</span>
+  </div>
+
+  <div class="main-card">
+    <!-- URL -->
+    <div class="url-group">
+      <div class="url-input-wrap">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false" oninput="clearPreview()"/>
+      </div>
+      <button class="btn-paste" onclick="pasteURL()">📋 Pegar</button>
+    </div>
+
+    <!-- Info preview -->
+    <div class="info-preview" id="infoPreview">
+      <img class="info-thumb" id="infoThumb" src="" alt="thumb"/>
+      <div class="info-text">
+        <h4 id="infoTitle">—</h4>
+        <p id="infoMeta">—</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="setMode('video',this)">🎬 Video</button>
+      <button class="tab" onclick="setMode('audio',this)">🎵 Audio</button>
+      <button class="tab" onclick="setMode('playlist',this)">📋 Playlist</button>
+      <button class="tab" onclick="setMode('subs',this)">💬 Subtítulos</button>
+    </div>
+
+    <!-- Video options -->
+    <div id="videoOptions">
+      <div class="options-grid">
+        <div class="option-group">
+          <label>Calidad</label>
+          <select id="quality">
+            <option value="max">Máxima disponible</option>
+            <option value="2160">4K — 2160p</option>
+            <option value="1440">QHD — 1440p</option>
+            <option value="1080" selected>Full HD — 1080p</option>
+            <option value="720">HD — 720p</option>
+            <option value="480">SD — 480p</option>
+            <option value="360">360p</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>Formato</label>
+          <div class="format-chips">
+            <span class="format-chip sel" onclick="selFormat(this,'mp4')">MP4</span>
+            <span class="format-chip" onclick="selFormat(this,'webm')">WebM</span>
+            <span class="format-chip" onclick="selFormat(this,'mkv')">MKV</span>
+            <span class="format-chip" onclick="selFormat(this,'mov')">MOV</span>
+          </div>
+        </div>
+        <div class="option-group">
+          <label>Códec</label>
+          <select id="vcodec">
+            <option value="auto">Auto (recomendado)</option>
+            <option value="h264">H.264</option>
+            <option value="h265">H.265 / HEVC</option>
+            <option value="av1">AV1</option>
+            <option value="vp9">VP9</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>Audio del video</label>
+          <select id="audioTrack">
+            <option value="original">Idioma original</option>
+            <option value="mute">Sin audio</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggles-row">
+        <div class="toggle-chip active" onclick="this.classList.toggle('active')" id="t-hdr"><div class="dot"></div> HDR si disponible</div>
+        <div class="toggle-chip" onclick="this.classList.toggle('active')" id="t-60fps"><div class="dot"></div> 60fps</div>
+        <div class="toggle-chip" onclick="this.classList.toggle('active')" id="t-subs"><div class="dot"></div> Incluir subtítulos</div>
+        <div class="toggle-chip active" onclick="this.classList.toggle('active')" id="t-meta"><div class="dot"></div> Metadatos</div>
+      </div>
+    </div>
+
+    <!-- Audio options -->
+    <div id="audioOptions">
+      <div class="options-grid">
+        <div class="option-group">
+          <label>Formato</label>
+          <div class="format-chips">
+            <span class="format-chip sel" onclick="selFormat(this,'mp3')">MP3</span>
+            <span class="format-chip" onclick="selFormat(this,'aac')">AAC</span>
+            <span class="format-chip" onclick="selFormat(this,'flac')">FLAC</span>
+            <span class="format-chip" onclick="selFormat(this,'wav')">WAV</span>
+            <span class="format-chip" onclick="selFormat(this,'ogg')">OGG</span>
+            <span class="format-chip" onclick="selFormat(this,'m4a')">M4A</span>
+          </div>
+        </div>
+        <div class="option-group">
+          <label>Bitrate</label>
+          <select id="audioBitrate">
+            <option value="320">320 kbps — Máxima</option>
+            <option value="256">256 kbps</option>
+            <option value="192" selected>192 kbps — Recomendada</option>
+            <option value="128">128 kbps</option>
+            <option value="96">96 kbps</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggles-row">
+        <div class="toggle-chip active" onclick="this.classList.toggle('active')"><div class="dot"></div> Normalizar volumen</div>
+        <div class="toggle-chip active" onclick="this.classList.toggle('active')"><div class="dot"></div> Incrustar portada</div>
+        <div class="toggle-chip" onclick="this.classList.toggle('active')"><div class="dot"></div> Tags ID3</div>
+      </div>
+    </div>
+
+    <!-- Playlist options -->
+    <div id="playlistOptions">
+      <div class="options-grid">
+        <div class="option-group">
+          <label>Rango de videos</label>
+          <input type="text" placeholder="1-10 · 1,3,5 · dejar vacío = todos" id="playlistRange"/>
+        </div>
+        <div class="option-group">
+          <label>Calidad</label>
+          <select id="plQuality">
+            <option value="best">Mejor disponible</option>
+            <option value="1080">1080p</option>
+            <option value="720" selected>720p</option>
+            <option value="480">480p</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>Formato</label>
+          <select id="plFormat">
+            <option value="mp4">MP4</option>
+            <option value="mp3">MP3 (solo audio)</option>
+            <option value="m4a">M4A</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subs options -->
+    <div id="subsOptions">
+      <div class="options-grid">
+        <div class="option-group">
+          <label>Idioma</label>
+          <select id="subLang">
+            <option value="es">Español</option>
+            <option value="en">Inglés</option>
+            <option value="pt">Portugués</option>
+            <option value="fr">Francés</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>Formato</label>
+          <div class="format-chips">
+            <span class="format-chip sel" onclick="selFormat(this,'srt')">SRT</span>
+            <span class="format-chip" onclick="selFormat(this,'vtt')">VTT</span>
+            <span class="format-chip" onclick="selFormat(this,'ass')">ASS</span>
+          </div>
+        </div>
+      </div>
+      <div class="toggles-row">
+        <div class="toggle-chip active" onclick="this.classList.toggle('active')"><div class="dot"></div> Subtítulos automáticos</div>
+        <div class="toggle-chip" onclick="this.classList.toggle('active')"><div class="dot"></div> Traducir</div>
+      </div>
+    </div>
+
+    <!-- Advanced -->
+    <button class="advanced-toggle" onclick="toggleAdv(this)">
+      <span class="arrow">›</span> Opciones avanzadas
+    </button>
+    <div class="advanced-panel" id="advPanel">
+      <div class="adv-grid">
+        <div class="option-group">
+          <label>Nombre de archivo</label>
+          <input type="text" placeholder="%(title)s.%(ext)s" id="filename"/>
+        </div>
+        <div class="option-group">
+          <label>Recortar (inicio-fin)</label>
+          <input type="text" placeholder="00:01:30-00:03:00" id="trim"/>
+        </div>
+        <div class="option-group">
+          <label>Región</label>
+          <select id="region">
+            <option value="">Auto</option>
+            <option value="MX">México</option>
+            <option value="US">EE.UU.</option>
+            <option value="ES">España</option>
+            <option value="AR">Argentina</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="err-msg" id="errMsg"></div>
+
+    <div class="btn-row">
+      <button class="btn-info" id="btnInfo" onclick="getInfo()">🔍 Info</button>
+      <button class="btn-download" id="btnDownload" onclick="startDownload()">⬇ Descargar ahora</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-header">
+      <span class="status-label" id="statusLabel">Preparando...</span>
+      <span class="status-pct" id="statusPct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="status-info">
+      <span>Velocidad: <strong id="dlSpeed">—</strong></span>
+      <span>ETA: <strong id="dlEta">—</strong></span>
+      <span>Tamaño: <strong id="dlSize">—</strong></span>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="resultCard">
+    <div class="result-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#30d158" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="result-text">
+      <h3>¡Archivo listo!</h3>
+      <p id="resultMeta">—</p>
+    </div>
+    <div class="result-actions">
+      <a href="#" class="btn-sm primary" id="resultLink" target="_blank">⬇ Descargar</a>
+      <button class="btn-sm" onclick="resetDownload()">Nueva descarga</button>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="features-row">
+    <div class="feat-card"><div class="feat-icon">🔒</div><h4>100% privado</h4><p>Tu propio servidor, tus propias reglas</p></div>
+    <div class="feat-card"><div class="feat-icon">⚡</div><h4>yt-dlp real</h4><p>El motor más potente y actualizado</p></div>
+    <div class="feat-card"><div class="feat-icon">🎛</div><h4>Control total</h4><p>Calidad, formato, recorte y más</p></div>
+  </div>
+
+  <footer>
+    Solo para uso personal · Backend con yt-dlp · 
+    <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> · YT Vault 2024
+  </footer>
+</div>
+
+<script>
+let currentMode = 'video';
+let selectedFormat = 'mp4';
+let pollInterval = null;
+
+function getApiUrl() {
+  return (document.getElementById('apiUrl').value || localStorage.getItem('yt_api_url') || '').replace(/\/$/, '');
+}
+
+async function testAPI() {
+  const url = getApiUrl();
+  const dot = document.getElementById('dotStatus');
+  if (!url) { showError('Ingresa la URL de tu API primero'); return; }
+  localStorage.setItem('yt_api_url', url);
+  try {
+    const r = await fetch(url + '/');
+    const d = await r.json();
+    dot.className = 'dot-status ok';
+  } catch(e) {
+    dot.className = 'dot-status err';
+    showError('No se pudo conectar: ' + e.message);
+  }
+}
+
+// Restore saved API URL
+window.onload = () => {
+  const saved = localStorage.getItem('yt_api_url');
+  if (saved) document.getElementById('apiUrl').value = saved;
+};
+
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['videoOptions','audioOptions','playlistOptions','subsOptions'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  const map = {video:'videoOptions',audio:'audioOptions',playlist:'playlistOptions',subs:'subsOptions'};
+  document.getElementById(map[mode]).style.display = 'block';
+}
+
+function selFormat(el, fmt) {
+  selectedFormat = fmt;
+  el.closest('.format-chips').querySelectorAll('.format-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function toggleAdv(btn) {
+  btn.classList.toggle('open');
+  document.getElementById('advPanel').classList.toggle('open');
+}
+
+async function pasteURL() {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('urlInput').value = text;
+  } catch { document.getElementById('urlInput').focus(); }
+}
+
+function clearPreview() {
+  document.getElementById('infoPreview').classList.remove('show');
+}
+
+function showError(msg) {
+  const el = document.getElementById('errMsg');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 6000);
+}
+
+async function getInfo() {
+  const url = document.getElementById('urlInput').value.trim();
+  const api = getApiUrl();
+  if (!url) { showError('Ingresa una URL'); return; }
+  if (!api) { showError('Configura la URL de tu API arriba'); return; }
+
+  const btn = document.getElementById('btnInfo');
+  btn.disabled = true; btn.textContent = '⏳ Cargando...';
+
+  try {
+    const r = await fetch(api + '/info', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Error');
+
+    document.getElementById('infoTitle').textContent = d.title || '—';
+    const dur = d.duration ? Math.floor(d.duration/60) + 'm ' + (d.duration%60) + 's' : '';
+    const views = d.view_count ? (d.view_count/1000).toFixed(0) + 'K vistas' : '';
+    document.getElementById('infoMeta').textContent = [d.uploader, dur, views].filter(Boolean).join(' · ');
+    if (d.thumbnail) document.getElementById('infoThumb').src = d.thumbnail;
+    document.getElementById('infoPreview').classList.add('show');
+  } catch(e) {
+    showError('Error al obtener info: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 Info';
+  }
+}
+
+async function startDownload() {
+  const url = document.getElementById('urlInput').value.trim();
+  const api = getApiUrl();
+  if (!url) { showError('Ingresa una URL'); return; }
+  if (!api) { showError('Configura la URL de tu API arriba y prueba la conexión'); return; }
+
+  const btn = document.getElementById('btnDownload');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Iniciando...';
+  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('errMsg').classList.remove('show');
+
+  const payload = {
+    url,
+    mode: currentMode,
+    quality: document.getElementById('quality')?.value || '1080',
+    video_format: currentMode === 'video' ? selectedFormat : 'mp4',
+    audio_format: currentMode === 'audio' ? selectedFormat : 'mp3',
+    audio_bitrate: document.getElementById('audioBitrate')?.value || '192',
+    vcodec: document.getElementById('vcodec')?.value || 'auto',
+    include_subs: document.getElementById('t-subs')?.classList.contains('active') || false,
+    sub_lang: document.getElementById('subLang')?.value || 'es',
+    sub_format: currentMode === 'subs' ? selectedFormat : 'srt',
+    hdr: document.getElementById('t-hdr')?.classList.contains('active') || false,
+    fps60: document.getElementById('t-60fps')?.classList.contains('active') || false,
+    metadata: document.getElementById('t-meta')?.classList.contains('active') || true,
+    trim: document.getElementById('trim')?.value || '',
+    playlist_range: document.getElementById('playlistRange')?.value || '',
+    filename_template: document.getElementById('filename')?.value || '%(title)s.%(ext)s',
+  };
+
+  try {
+    const r = await fetch(api + '/download', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Error al iniciar descarga');
+
+    startPolling(d.job_id, api);
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '⬇ Descargar ahora';
+    showError('Error: ' + e.message);
+  }
+}
+
+function startPolling(jobId, api) {
+  const statusBar = document.getElementById('statusBar');
+  statusBar.classList.add('show');
+
+  if (pollInterval) clearInterval(pollInterval);
+
+  pollInterval = setInterval(async () => {
+    try {
+      const r = await fetch(api + '/progress/' + jobId);
+      const d = await r.json();
+
+      document.getElementById('progressFill').style.width = d.percent + '%';
+      document.getElementById('statusPct').textContent = Math.round(d.percent) + '%';
+      document.getElementById('dlSpeed').textContent = d.speed || '—';
+      document.getElementById('dlEta').textContent = d.eta || '—';
+      document.getElementById('dlSize').textContent = d.filesize || '—';
+
+      const labels = {starting:'Preparando...', downloading:'Descargando...', processing:'Procesando...', done:'¡Completo!'};
+      document.getElementById('statusLabel').textContent = labels[d.status] || d.status;
+
+      if (d.status === 'done') {
+        clearInterval(pollInterval);
+        statusBar.classList.remove('show');
+        showResult(api + d.download_url, d.filename);
+        const btn = document.getElementById('btnDownload');
+        btn.disabled = false;
+        btn.innerHTML = '⬇ Descargar ahora';
+      } else if (d.status === 'error') {
+        clearInterval(pollInterval);
+        statusBar.classList.remove('show');
+        showError('Error en la descarga: ' + (d.error || 'desconocido'));
+        const btn = document.getElementById('btnDownload');
+        btn.disabled = false;
+        btn.innerHTML = '⬇ Descargar ahora';
+      }
+    } catch(e) {
+      // silently retry
+    }
+  }, 1000);
+}
+
+function showResult(downloadUrl, filename) {
+  document.getElementById('resultMeta').textContent = filename || 'Archivo listo';
+  const link = document.getElementById('resultLink');
+  link.href = downloadUrl;
+  link.download = filename || 'descarga';
+  document.getElementById('resultCard').classList.add('show');
+}
+
+function resetDownload() {
+  document.getElementById('urlInput').value = '';
+  document.getElementById('resultCard').classList.remove('show');
+  clearPreview();
+  document.getElementById('urlInput').focus();
+}
+</script>
+</body>
+</html>
